@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>色変化タイマー</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0066cc">
+<style>
+  body {
+    background: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+  }
+  canvas {
+    background: none;
+  }
+  #controls {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  input {
+    width: 60px;
+    text-align: center;
+  }
+  #stats {
+    margin-top: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+</style>
+</head>
+<body>
+<canvas id="timerCanvas" width="300" height="300"></canvas>
+
+<div id="controls">
+  勉強: <input type="number" id="focusTime" value="25">分
+  休憩: <input type="number" id="breakTime" value="5">分
+  <button id="startBtn">スタート</button>
+</div>
+
+<div id="stats">累計勉強時間: 0分</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+
+const canvas = document.getElementById('timerCanvas');
+const ctx = canvas.getContext('2d');
+
+let mode = 'focus';
+let focusMinutes = 25;
+let breakMinutes = 5;
+let totalTime = focusMinutes * 60;
+let timeLeft = totalTime;
+let timerInterval;
+let totalFocusMinutes = 0; // 累計勉強時間
+
+function drawCircle() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const progress = 1 - timeLeft / totalTime;
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + progress * 2 * Math.PI;
+
+  let startColor = mode === 'focus' ? [0, 102, 204] : [0, 153, 102];
+  let endColor   = [200, 230, 255];
+  const r = startColor[0] + (endColor[0] - startColor[0]) * progress;
+  const g = startColor[1] + (endColor[1] - startColor[1]) * progress;
+  const b = startColor[2] + (endColor[2] - startColor[2]) * progress;
+
+  ctx.lineWidth = 20;
+  ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+  ctx.beginPath();
+  ctx.arc(150, 150, 100, startAngle, endAngle);
+  ctx.stroke();
+}
+
+function tick() {
+  timeLeft--;
+  if (timeLeft < 0) {
+    if (mode === 'focus') {
+      totalFocusMinutes += focusMinutes;
+      updateStats();
+      mode = 'break';
+      totalTime = breakMinutes * 60;
+    } else {
+      mode = 'focus';
+      totalTime = focusMinutes * 60;
+    }
+    timeLeft = totalTime;
+  }
+  drawCircle();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  focusMinutes = parseInt(document.getElementById('focusTime').value) || 25;
+  breakMinutes = parseInt(document.getElementById('breakTime').value) || 5;
+  mode = 'focus';
+  totalTime = focusMinutes * 60;
+  timeLeft = totalTime;
+  drawCircle();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function updateStats() {
+  document.getElementById('stats').textContent = `累計勉強時間: ${totalFocusMinutes}分`;
+}
+
+document.getElementById('startBtn').addEventListener('click', startTimer);
+
+// 初期表示
+drawCircle();
+updateStats();
+</script>
+</body>
+</html>
